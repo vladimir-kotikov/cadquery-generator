@@ -1,5 +1,5 @@
 ---
-name: parametric-3d-printing
+name: cadquery-generator
 description: "Use this skill when the user wants to design a 3D-printable physical object they intend to manufacture. Triggers: any mention of '3D print', 'STL', 'parametric model', 'enclosure', 'bracket', 'mount', 'case', 'housing', 'CadQuery', 'OpenSCAD', or a specific FDM printer (Bambu Lab, Prusa, Ender); questions about print-friendly design, snap-fits, tolerances, or wall thickness; and requests for functional parts like Arduino enclosures, cable organizers, wall mounts, adapters, or mechanical components. Also fires when the user describes a real physical object to make, provided the goal is to manufacture it. Do NOT use for: 3D rendering, animation, game assets, digital-only art, photogrammetry, sculpting, editing an existing STL file the user already has, or any 3D work that is not heading toward a printer."
 ---
 
@@ -22,6 +22,7 @@ pip install cadquery trimesh pyrender Pillow
 CadQuery uses the OpenCASCADE kernel under the hood. trimesh, pyrender, and Pillow are used for the preview-analyze-iterate loop. No display server is needed; everything renders headlessly via pyrender's offscreen backend.
 
 **If CadQuery fails to install** (OCC kernel build errors), try:
+
 ```bash
 # Option 1: Use conda (CadQuery's officially recommended method)
 conda install -c cadquery -c conda-forge cadquery
@@ -35,6 +36,7 @@ pip install cadquery --find-links https://github.com/CadQuery/CadQuery/releases
 When designing objects that interface with real products (phones, chargers, PCBs, connectors, etc.), **use web search to find accurate dimensions** before writing any geometry code. Don't guess or use approximate values. Even 1-2mm off can make a part unusable.
 
 **What to research:**
+
 - Connector/port dimensions (USB-C: 8.4 x 2.6mm opening, Lightning, barrel jacks)
 - Device dimensions (phone width/thickness, PCB footprints, charger puck diameters)
 - Mounting hole patterns and screw sizes (M2.5, M3, etc.)
@@ -42,6 +44,7 @@ When designing objects that interface with real products (phones, chargers, PCBs
 - Cable bend radii and strain relief requirements
 
 **How to use it:**
+
 1. Search for "[product] dimensions mm" or "[component] datasheet"
 2. Cross-reference at least 2 sources when precision matters
 3. Add the sourced dimensions as comments in the PARAMETERS section:
@@ -96,12 +99,15 @@ Build the model in phases. At each phase, export an STL, render a preview, self-
 ### Preview recipe (use at every phase)
 
 **One-shot (run script + render + parse result as JSON):**
+
 ```bash
 python3 run_cadquery_model.py model.py --preview --strict
 ```
+
 This executes `model.py`, finds the STL it wrote, renders the multi-view preview, and emits a JSON result with `success`, `stdout`, `stderr`, `stl`, `preview`, and `watertight`. With `--strict`, a non-watertight mesh is a hard failure. Use this as the default loop: if `success` is false, read the `stderr` field to fix the CadQuery script, then re-run.
 
 **Rendering only (when the STL already exists):**
+
 ```bash
 python3 preview.py model.stl preview.png --views multi
 ```
@@ -148,12 +154,14 @@ Read `design-review.md` for the full visual inspection checklist, dimensional ve
 
 ### Print Recommendations (final delivery)
 
-When you deliver the final STL, always include a one-line slicer recipe plus a short rationale. Bambu Studio, PrusaSlicer, and OrcaSlicer already set sensible defaults from their filament + process presets, so **do not restate every slicer option**. Only tell the user what matters for *this* model: material, layer height, walls, infill, supports, and orientation. Tweak from the baseline below only when the model needs it.
+When you deliver the final STL, always include a one-line slicer recipe plus a short rationale. Bambu Studio, PrusaSlicer, and OrcaSlicer already set sensible defaults from their filament + process presets, so **do not restate every slicer option**. Only tell the user what matters for _this_ model: material, layer height, walls, infill, supports, and orientation. Tweak from the baseline below only when the model needs it.
 
 **Baseline recipe (0.4mm nozzle, typical FDM):**
+
 > PLA, 0.2mm layer, 2 walls, 15% gyroid infill, no supports, orientation: flat side on bed.
 
 **When to deviate from the baseline:**
+
 - **Load-bearing brackets / hooks / hinges**: bump infill to 25-40%, 3-4 walls, consider PETG over PLA for toughness.
 - **Thin decorative walls or vases**: 0 infill, vase mode or 1 wall.
 - **Tall narrow parts**: add a brim for bed adhesion.
@@ -163,6 +171,7 @@ When you deliver the final STL, always include a one-line slicer recipe plus a s
 - **Food / skin contact**: call out that FDM parts are not food-safe and recommend a food-safe coating.
 
 **Format at delivery time:**
+
 ```
 Print settings: PLA, 0.2mm layer, 2 walls, 15% gyroid infill, no supports.
 Orientation: place flat back side on the bed (front face up).
@@ -184,7 +193,7 @@ import cadquery as cq
 # ============================================================
 # Overall dimensions
 width = 60.0        # mm - outer width
-depth = 40.0        # mm - outer depth  
+depth = 40.0        # mm - outer depth
 height = 25.0       # mm - outer height
 
 # Wall and structural
@@ -216,28 +225,31 @@ print(f"Exported: {width}x{depth}x{height}mm")
 ## Key Rules
 
 ### Parameters First
+
 - ALL dimensions go in the PARAMETERS section at the top
 - Use descriptive names: `screw_hole_d`, not `d1`
 - Add units in comments (always mm)
 - Group related parameters with blank lines and section comments
 
 ### Print-Friendly Defaults
+
 Key FDM design defaults:
 
-| Property | Minimum | Recommended |
-|----------|---------|-------------|
-| Wall thickness | 1.2mm | 2.0mm |
-| Layer height | 0.08mm | 0.2mm |
-| Hole clearance | 0.2mm | 0.3mm |
-| Press-fit interference | 0.1mm | 0.15mm |
-| Min feature size | 0.4mm (nozzle) | 0.8mm |
-| Fillet radius (bottom) | 0.5mm | 1.0mm |
-| Bridge span | - | < 20mm unsupported |
-| Overhang angle | - | < 45 degrees from vertical |
+| Property               | Minimum        | Recommended                |
+| ---------------------- | -------------- | -------------------------- |
+| Wall thickness         | 1.2mm          | 2.0mm                      |
+| Layer height           | 0.08mm         | 0.2mm                      |
+| Hole clearance         | 0.2mm          | 0.3mm                      |
+| Press-fit interference | 0.1mm          | 0.15mm                     |
+| Min feature size       | 0.4mm (nozzle) | 0.8mm                      |
+| Fillet radius (bottom) | 0.5mm          | 1.0mm                      |
+| Bridge span            | -              | < 20mm unsupported         |
+| Overhang angle         | -              | < 45 degrees from vertical |
 
 **Material-specific adjustments:** TPU needs larger clearances (~0.5mm) due to flex. PETG is stickier, so add +0.1mm to fit clearances. ABS shrinks ~0.5-0.7%, so scale critical dimensions up slightly. When in doubt, print a small test piece first.
 
 ### Orientation Awareness
+
 - Design with print orientation in mind
 - Flat bottom surfaces print best
 - Avoid supports when possible by designing around overhangs
@@ -249,6 +261,7 @@ Key FDM design defaults:
 Common patterns to know:
 
 **Hollow enclosure (boolean subtraction, preferred):**
+
 ```python
 outer = (
     cq.Workplane("XY")
@@ -265,6 +278,7 @@ result = outer.cut(inner)
 ```
 
 **Screw boss:**
+
 ```python
 .pushPoints([(x, y)])
 .circle(boss_od / 2).extrude(boss_h)
@@ -273,6 +287,7 @@ result = outer.cut(inner)
 ```
 
 **Snap-fit clip:**
+
 ```python
 # Cantilever beam with overhang hook
 .workplane(offset=wall)
@@ -281,6 +296,7 @@ result = outer.cut(inner)
 ```
 
 **Ventilation grid:**
+
 ```python
 .pushPoints(vent_positions)
 .slot2D(slot_l, slot_w).cutThruAll()
@@ -343,6 +359,7 @@ Name files descriptively so the user knows which part is which.
 After delivering the final model, **always present the key parameters as a summary table** and offer to tweak them. This lets the user fine-tune without re-explaining the whole design.
 
 Example:
+
 ```
 Here's your final model! Current parameters:
 
@@ -364,6 +381,7 @@ Only include parameters the user would plausibly want to change. Skip internal c
 ## Output Checklist
 
 Before delivering a model, verify:
+
 - [ ] All dimensions are parameterized (no magic numbers in geometry code)
 - [ ] Wall thickness >= 1.2mm
 - [ ] Designed for printability (minimal overhangs/supports)
